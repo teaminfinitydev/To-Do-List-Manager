@@ -15,8 +15,15 @@
   },
   {
     "text": "sdsdsd",
-    "completed": false,
+    "completed": true,
     "priority": "Medium",
+    "due_date": null,
+    "created_date": "2025-06-23"
+  },
+  {
+    "text": "sadsd",
+    "completed": true,
+    "priority": "High",
     "due_date": null,
     "created_date": "2025-06-23"
   }

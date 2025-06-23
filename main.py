@@ -53,9 +53,6 @@ class TodoApp:
         
         style.configure('Title.TLabel', font=('Arial', 16, 'bold'), background='#f0f0f0')
         style.configure('Custom.TButton', font=('Arial', 10))
-        style.configure('Priority.High.TLabel', foreground='#dc3545', font=('Arial', 9, 'bold'))
-        style.configure('Priority.Medium.TLabel', foreground='#fd7e14', font=('Arial', 9, 'bold'))
-        style.configure('Priority.Low.TLabel', foreground='#28a745', font=('Arial', 9, 'bold'))
     
     def create_widgets(self):
         main_frame = ttk.Frame(self.root, padding="20")
@@ -108,13 +105,25 @@ class TodoApp:
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
         
-        self.task_listbox = tk.Listbox(list_frame, font=('Arial', 11), height=15,
-                                     selectmode=tk.SINGLE, activestyle='none')
-        self.task_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.task_tree = ttk.Treeview(list_frame, columns=('Priority', 'Due Date', 'Status'), 
+                                    show='tree headings', height=15)
+        self.task_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.task_listbox.yview)
+        self.task_tree.heading('#0', text='Task', anchor='w')
+        self.task_tree.heading('Priority', text='Priority', anchor='center')
+        self.task_tree.heading('Due Date', text='Due Date', anchor='center')
+        self.task_tree.heading('Status', text='Status', anchor='center')
+        
+        self.task_tree.column('#0', width=400, minwidth=200)
+        self.task_tree.column('Priority', width=80, minwidth=80)
+        self.task_tree.column('Due Date', width=100, minwidth=100)
+        self.task_tree.column('Status', width=80, minwidth=80)
+        
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.task_tree.yview)
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        self.task_listbox.configure(yscrollcommand=scrollbar.set)
+        self.task_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.setup_tree_styles()
         
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=4, column=0, columnspan=3, pady=(10, 0))
@@ -132,6 +141,17 @@ class TodoApp:
         ttk.Button(button_frame, text="🗂️ Clear Completed", command=self.clear_completed, 
                   style='Custom.TButton').grid(row=0, column=5)
     
+    def setup_tree_styles(self):
+        self.task_tree.tag_configure('completed', foreground='#6c757d', font=('Arial', 11, 'overstrike'))
+        self.task_tree.tag_configure('high_priority', foreground='#dc3545', font=('Arial', 11, 'bold'))
+        self.task_tree.tag_configure('medium_priority', foreground='#fd7e14', font=('Arial', 11, 'bold'))
+        self.task_tree.tag_configure('low_priority', foreground='#28a745', font=('Arial', 11, 'bold'))
+        self.task_tree.tag_configure('overdue', foreground='#dc3545', background='#f8d7da', font=('Arial', 11, 'bold'))
+        self.task_tree.tag_configure('due_today', foreground='#856404', background='#fff3cd', font=('Arial', 11, 'bold'))
+        self.task_tree.tag_configure('completed_high', foreground='#6c757d', font=('Arial', 11, 'overstrike'))
+        self.task_tree.tag_configure('completed_medium', foreground='#6c757d', font=('Arial', 11, 'overstrike'))
+        self.task_tree.tag_configure('completed_low', foreground='#6c757d', font=('Arial', 11, 'overstrike'))
+    
     def add_task(self):
         task_text = self.task_entry.get().strip()
         if task_text:
@@ -146,71 +166,71 @@ class TodoApp:
             messagebox.showwarning("Warning", "Please enter a task!")
     
     def toggle_task(self):
-        selection = self.task_listbox.curselection()
+        selection = self.task_tree.selection()
         if selection:
-            index = selection[0]
-            if index < len(self.filtered_tasks):
-                task = self.filtered_tasks[index]
-                task.completed = not task.completed
-                self.save_tasks()
-                self.refresh_task_list()
-                status = "completed" if task.completed else "pending"
-                messagebox.showinfo("Success", f"Task marked as {status}!")
+            item_id = selection[0]
+            task_index = int(self.task_tree.item(item_id)['values'][3])
+            task = self.filtered_tasks[task_index]
+            task.completed = not task.completed
+            self.save_tasks()
+            self.refresh_task_list()
+            status = "completed" if task.completed else "pending"
+            messagebox.showinfo("Success", f"Task marked as {status}!")
         else:
             messagebox.showwarning("Warning", "Please select a task!")
     
     def edit_task(self):
-        selection = self.task_listbox.curselection()
+        selection = self.task_tree.selection()
         if selection:
-            index = selection[0]
-            if index < len(self.filtered_tasks):
-                task = self.filtered_tasks[index]
-                new_text = simpledialog.askstring("Edit Task", "Edit task:", initialvalue=task.text)
-                if new_text and new_text.strip():
-                    task.text = new_text.strip()
-                    self.save_tasks()
-                    self.refresh_task_list()
-                    messagebox.showinfo("Success", "Task updated successfully!")
+            item_id = selection[0]
+            task_index = int(self.task_tree.item(item_id)['values'][3])
+            task = self.filtered_tasks[task_index]
+            new_text = simpledialog.askstring("Edit Task", "Edit task:", initialvalue=task.text)
+            if new_text and new_text.strip():
+                task.text = new_text.strip()
+                self.save_tasks()
+                self.refresh_task_list()
+                messagebox.showinfo("Success", "Task updated successfully!")
         else:
             messagebox.showwarning("Warning", "Please select a task!")
     
     def delete_task(self):
-        selection = self.task_listbox.curselection()
+        selection = self.task_tree.selection()
         if selection:
-            index = selection[0]
-            if index < len(self.filtered_tasks):
-                task = self.filtered_tasks[index]
-                if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{task.text}'?"):
-                    self.tasks.remove(task)
-                    self.save_tasks()
-                    self.refresh_task_list()
-                    messagebox.showinfo("Success", "Task deleted successfully!")
+            item_id = selection[0]
+            task_index = int(self.task_tree.item(item_id)['values'][3])
+            task = self.filtered_tasks[task_index]
+            if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{task.text}'?"):
+                self.tasks.remove(task)
+                self.save_tasks()
+                self.refresh_task_list()
+                messagebox.showinfo("Success", "Task deleted successfully!")
         else:
             messagebox.showwarning("Warning", "Please select a task!")
     
     def set_due_date(self):
-        selection = self.task_listbox.curselection()
+        selection = self.task_tree.selection()
         if selection:
-            index = selection[0]
-            if index < len(self.filtered_tasks):
-                task = self.filtered_tasks[index]
-                date_str = simpledialog.askstring("Set Due Date", 
-                                                "Enter due date (YYYY-MM-DD):", 
-                                                initialvalue=task.due_date or "")
-                if date_str:
-                    try:
-                        datetime.strptime(date_str, "%Y-%m-%d")
-                        task.due_date = date_str
-                        self.save_tasks()
-                        self.refresh_task_list()
-                        messagebox.showinfo("Success", "Due date set successfully!")
-                    except ValueError:
-                        messagebox.showerror("Error", "Invalid date format! Use YYYY-MM-DD")
-                elif date_str == "":
-                    task.due_date = None
+            item_id = selection[0]
+            task_index = int(self.task_tree.item(item_id)['values'][3])
+            task = self.filtered_tasks[task_index]
+            date_str = simpledialog.askstring("Set Due Date", 
+                                            "Enter due date (YYYY-MM-DD):", 
+                                            initialvalue=task.due_date or "")
+            if date_str:
+                try:
+                    datetime.strptime(date_str, "%Y-%m-%d")
+                    task.due_date = date_str
                     self.save_tasks()
                     self.refresh_task_list()
-                    messagebox.showinfo("Success", "Due date cleared!")
+                    messagebox.showinfo("Success", "Due date set successfully!")
+                except ValueError:
+                    messagebox.showerror("Error", "Invalid date format! Use YYYY-MM-DD")
+            elif date_str == "":
+                task.due_date = None
+                self.save_tasks()
+                self.refresh_task_list()
+                messagebox.showinfo("Success", "Due date cleared!")
         else:
             messagebox.showwarning("Warning", "Please select a task!")
     
@@ -249,30 +269,44 @@ class TodoApp:
         self.refresh_task_list()
     
     def refresh_task_list(self):
-        self.task_listbox.delete(0, tk.END)
+        for item in self.task_tree.get_children():
+            self.task_tree.delete(item)
         
         if not hasattr(self, 'filtered_tasks'):
             self.filtered_tasks = self.tasks.copy()
         
-        for task in self.filtered_tasks:
-            status = "✓" if task.completed else "○"
-            priority_symbol = {"High": "🔴", "Medium": "🟡", "Low": "🟢"}[task.priority]
-            due_info = f" 📅 {task.due_date}" if task.due_date else ""
+        for index, task in enumerate(self.filtered_tasks):
+            status_text = "✓ Done" if task.completed else "○ Pending"
+            priority_symbol = {"High": "🔴 High", "Medium": "🟡 Medium", "Low": "🟢 Low"}[task.priority]
+            due_text = task.due_date if task.due_date else "No due date"
             
-            task_display = f"{status} {priority_symbol} {task.text}{due_info}"
-            self.task_listbox.insert(tk.END, task_display)
+            item_id = self.task_tree.insert('', 'end', text=task.text,
+                                          values=(priority_symbol, due_text, status_text, index))
+            
+            tags = []
             
             if task.completed:
-                self.task_listbox.itemconfig(tk.END, {'fg': 'gray'})
-            elif task.due_date:
-                try:
-                    due_date = datetime.strptime(task.due_date, "%Y-%m-%d").date()
-                    if due_date < date.today():
-                        self.task_listbox.itemconfig(tk.END, {'fg': 'red'})
-                    elif due_date == date.today():
-                        self.task_listbox.itemconfig(tk.END, {'fg': 'orange'})
-                except ValueError:
-                    pass
+                tags.append('completed')
+            else:
+                if task.priority == "High":
+                    tags.append('high_priority')
+                elif task.priority == "Medium":
+                    tags.append('medium_priority')
+                else:
+                    tags.append('low_priority')
+                
+                if task.due_date:
+                    try:
+                        due_date = datetime.strptime(task.due_date, "%Y-%m-%d").date()
+                        if due_date < date.today():
+                            tags = ['overdue']
+                        elif due_date == date.today():
+                            tags = ['due_today']
+                    except ValueError:
+                        pass
+            
+            if tags:
+                self.task_tree.item(item_id, tags=tags)
         
         self.update_stats()
     
