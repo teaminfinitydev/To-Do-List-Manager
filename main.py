@@ -127,8 +127,10 @@ class TodoApp:
                   style='Custom.TButton').grid(row=0, column=2, padx=(0, 10))
         ttk.Button(button_frame, text="📅 Set Due Date", command=self.set_due_date, 
                   style='Custom.TButton').grid(row=0, column=3, padx=(0, 10))
+        ttk.Button(button_frame, text="🔄 Refresh", command=self.refresh_data, 
+                  style='Custom.TButton').grid(row=0, column=4, padx=(0, 10))
         ttk.Button(button_frame, text="🗂️ Clear Completed", command=self.clear_completed, 
-                  style='Custom.TButton').grid(row=0, column=4)
+                  style='Custom.TButton').grid(row=0, column=5)
     
     def add_task(self):
         task_text = self.task_entry.get().strip()
@@ -222,6 +224,11 @@ class TodoApp:
                 messagebox.showinfo("Success", f"{len(completed_tasks)} completed tasks deleted!")
         else:
             messagebox.showinfo("Info", "No completed tasks to clear!")
+    
+    def refresh_data(self):
+        self.load_tasks()
+        self.filter_tasks()
+        messagebox.showinfo("Success", "Data refreshed from file!")
     
     def filter_tasks(self):
         filter_type = self.filter_var.get()
